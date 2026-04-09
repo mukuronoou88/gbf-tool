@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  font-family: sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+  padding: 10px;
+}
+
+.panel {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+input, select {
+  width: 100%;
+  margin-top: 5px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: white;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border-radius: 10px;
+  border: none;
+  font-weight: bold;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.check input {
+  width: auto;
+}
+
+.result-card {
+  background: #020617;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+/* 説明用 */
+.guide {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.guide b {
+  color: #93c5fd;
+}
+</style>
+</head>
+
+<body>
+
+<h2>編成最適化ツール</h2>
+
+<!-- 使い方 -->
+<div class="panel guide">
+<b>■使い方</b><br><br>
+
+<b>（召喚石）</b><br>
+編成の召喚石及び加護効果を持つキャラを使用するかどうかを選んでください。<br><br>
+
+<b>（重視）</b><br>
+編成において重視する内容を選択してください。<br>
+基本的には周回なら火力、フルオート等なら耐久がオススメです。<br><br>
+
+<b>（所持数）</b><br>
+武器の所持数を入力してください。<br>
+極星器は連撃率に関わるので、武器種が同じかどうかも選択してください。<br><br>
+
+<b>（編成自由枠数）</b><br>
+編成を何枠まで割けるか入力してください。分からない場合は8で良いです。<br><br>
+
+</div>
+
+<div class="panel">
+召喚石
+<select id="stone">
+<option value="0">なし</option>
+<option value="120">4凸</option>
+<option value="140">5凸</option>
+<option value="150">超越230</option>
+<option value="160">超越240</option>
+<option value="170" selected>超越250</option>
+</select>
+
+<label class="check"><input type="checkbox" id="friend" checked> フレ石</label>
+<label class="check"><input type="checkbox" id="uruki" checked> ウルキ</label>
+<label class="check"><input type="checkbox" id="gabu" checked> ガブ</label>
+</div>
+
+<div class="panel">
+重視
+<select id="mode">
+<option value="A">火力</option>
+<option value="B">耐久</option>
+</select>
+
+目標TA
+<input type="number" id="targetTA" value="20">
+</div>
+
+<div class="panel">
+<h3>所持数</h3>
+
+極星器
+<select id="starSelect">
+<option value="none">なし</option>
+<option value="same">同武器種</option>
+<option value="any">武器種問わず</option>
+</select>
+
+マレ斧 <input type="number" id="maxX" value="5">
+マレ刀 <input type="number" id="maxW" value="0">
+オルオベ <input type="number" id="maxY" value="4">
+リヴァ槍 <input type="number" id="maxZ" value="1">
+ブースト <input type="number" id="maxF" value="5">
+ワム槍 <input type="number" id="maxI" value="2">
+
+<label class="check"><input type="checkbox" id="gabDagger"> ガブ短剣</label>
+</div>
+
+<div class="panel">
+編成自由枠数
+<input type="number" id="maxTotal" value="7">
+</div>
+
+<button onclick="calc()">計算</button>
+
+<div class="panel" id="result"></div>
+
+<script>
+function calc(){
+
+  let base = 130;
+  let targetTA = Number(targetTAEl.value);
+
+  let add = Number(stone.value);
+  if(friend.checked) add += 170;
+  if(uruki.checked) add += 10;
+  if(gabu.checked) add += 20;
+
+  let gogo = (base + add) * 0.01;
+
+  let bestList = [];
+
+  for(let x=0;x<=maxX.value;x++)
+  for(let w=0;w<=maxW.value;w++)
+  for(let y=0;y<=maxY.value;y++)
+  for(let z=0;z<=maxZ.value;z++)
+  for(let f=0;f<=maxF.value;f++)
+  for(let i=0;i<=maxI.value;i++){
+
+    if(x+y+z+f+i+w > maxTotalEl.value) continue;
+
+    let baseVal = base + add + 20*f;
+    let rate = baseVal * 0.01;
+
+    let crit = (3*x + 6.5*y + 11*z) * rate + 20*i;
+    if(crit < 100) continue;
+
+    let TA = 2*x*rate + 2.9*w*rate;
+
+    let HP = (12*y + 17*w) * gogo;
+
+    let starMode = starSelect.value;
+    if(starMode === "same"){
+      TA += 10;
+      HP += 35;
+    }else if(starMode === "any"){
+      TA += 5;
+      HP += 35;
+    }
+
+    if(TA < targetTA) continue;
+
+    bestList.push({x,w,y,z,f,i,crit,TA,HP});
+  }
+
+  bestList.sort((a,b)=>{
+
+    let totalA = a.x+a.w+a.y+a.z+a.f+a.i;
+    let totalB = b.x+b.w+b.y+b.z+b.f+b.i;
+
+    if(totalA !== totalB) return totalB-totalA;
+
+    if(a.z !== b.z) return a.z - b.z;
+
+    if(mode.value==="A"){
+      let atkA = a.f+a.x+a.i;
+      let atkB = b.f+b.x+b.i;
+      if(atkA!==atkB) return atkB-atkA;
+      if(a.f!==b.f) return b.f-a.f;
+      if(a.x!==b.x) return b.x-a.x;
+      if(a.i!==b.i) return b.i-a.i;
+
+    }else{
+
+      let overA = a.HP >= 390;
+      let overB = b.HP >= 390;
+
+      if(!overA && !overB){
+        if(a.HP !== b.HP) return b.HP - a.HP;
+      }
+
+      if(overA && overB){
+        let atkA = a.f+a.x+a.i;
+        let atkB = b.f+b.x+b.i;
+        if(atkA!==atkB) return atkB-atkA;
+        if(a.f!==b.f) return b.f-a.f;
+        if(a.x!==b.x) return b.x-a.x;
+        if(a.i!==b.i) return b.i-a.i;
+      }
+
+      if(overA !== overB){
+        return overB - overA;
+      }
+
+      if(a.w!==b.w) return b.w-a.w;
+      if(a.y!==b.y) return b.y-a.y;
+    }
+
+    return 0;
+  });
+
+  let html = "";
+
+  if(bestList.length > 0){
+    let r = bestList[0];
+
+    html = `
+    <div class="result-card">
+      クリ率: ${r.crit.toFixed(2)}%<br>
+      TA: ${r.TA.toFixed(2)}<br>
+      HP: ${r.HP.toFixed(2)}<br><br>
+      マレ斧${r.x} / マレ刀${r.w} / オルオベ${r.y}<br>
+      リヴァ槍${r.z} / ブースト${r.f} / ワム槍${r.i}
+    </div>`;
+  }else{
+    html = "該当なし";
+  }
+
+  result.innerHTML = html;
+}
+
+let targetTAEl = document.getElementById("targetTA");
+
+let stone = document.getElementById("stone");
+let friend = document.getElementById("friend");
+let uruki = document.getElementById("uruki");
+let gabu = document.getElementById("gabu");
+
+let starSelect = document.getElementById("starSelect");
+
+let maxX = document.getElementById("maxX");
+let maxW = document.getElementById("maxW");
+let maxY = document.getElementById("maxY");
+let maxZ = document.getElementById("maxZ");
+let maxF = document.getElementById("maxF");
+let maxI = document.getElementById("maxI");
+
+let maxTotalEl = document.getElementById("maxTotal");
+
+let mode = document.getElementById("mode");
+let result = document.getElementById("result");
+</script>
+
+</body>
+</html>
